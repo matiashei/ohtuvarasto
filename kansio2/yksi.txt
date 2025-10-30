@@ -1,1 +1,0 @@
-Mene edellisessä tehtävässä luotuun repositorion klooniin (eli komennon git clone luomaan hakemistoon)

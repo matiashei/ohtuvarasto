@@ -1,2 +1,0 @@
- on tmp, sekä hakemistot, joiden nimi on __pycache__ ja .pytest_cache ignoroidaan
-Toinen ignoroitava
