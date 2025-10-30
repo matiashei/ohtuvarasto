@@ -1,0 +1,2 @@
+# ohtuvarasto
+Helsingin yliopiston ohjelmistotuotannon kurssin harjoitusrepositorio
