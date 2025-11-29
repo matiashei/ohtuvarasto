@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Warehouses - Warehouse Manager{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1 class="card-title" style="margin-bottom: 0;">Your Warehouses</h1>
+        <a href="{{ url_for('create_warehouse') }}" class="btn btn-primary">+ New Warehouse</a>
+    </div>
+
+    {% if warehouses %}
+        <div class="warehouse-grid">
+            {% for id, warehouse in warehouses.items() %}
+                {% set info = warehouse_info[id] %}
+                <div class="warehouse-card">
+                    <h3 class="warehouse-name">{{ warehouse.name }}</h3>
+                    <div class="warehouse-stats">
+                        <div class="stat">
+                            <span class="stat-label">Capacity</span>
+                            <span class="stat-value">{{ "%.2f"|format(warehouse.capacity_m3) }} m³</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Used Space</span>
+                            <span class="stat-value">{{ "%.2f"|format(info.used_space) }} m³</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Available Space</span>
+                            <span class="stat-value">{{ "%.2f"|format(info.available_space) }} m³</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Items</span>
+                            <span class="stat-value">{{ warehouse.stored_items|length }}</span>
+                        </div>
+                    </div>
+                    {% set fill_percent = (info.used_space / warehouse.capacity_m3 * 100) if warehouse.capacity_m3 > 0 else 0 %}
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ fill_percent }}%;"></div>
+                    </div>
+                    <div class="actions">
+                        <a href="{{ url_for('view_warehouse', warehouse_id=id) }}" class="btn btn-primary btn-sm">View</a>
+                        <a href="{{ url_for('edit_warehouse', warehouse_id=id) }}" class="btn btn-secondary btn-sm">Edit</a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h2>No warehouses yet</h2>
+            <p>Create your first warehouse to get started!</p>
+            <a href="{{ url_for('create_warehouse') }}" class="btn btn-primary" style="margin-top: 20px;">Create Warehouse</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
