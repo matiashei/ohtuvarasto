@@ -10,11 +10,11 @@ warehouses: dict[int, dict] = {}
 next_id = 1
 next_item_id = 1
 
-# Unit types and their conversion to cubic meters
-UNIT_TYPES = {
-    'm3': {'name': 'Cubic Meters (m³)', 'to_m3': 1.0},
-    'liters': {'name': 'Liters (L)', 'to_m3': 0.001},
-    'units': {'name': 'Units/Bottles', 'to_m3': 0.001}  # Approx 1L per unit
+# Secondary unit types (informational only, don't affect storage space)
+SECONDARY_UNITS = {
+    'liters': {'name': 'Liters (L)'},
+    'kg': {'name': 'Kilograms (kg)'},
+    'units': {'name': 'Units/Bottles'}
 }
 
 
@@ -38,8 +38,7 @@ def calculate_used_space(warehouse):
     """Calculate total used space in m³ from all items."""
     total = 0.0
     for item in warehouse.get('stored_items', {}).values():
-        unit_info = UNIT_TYPES.get(item['unit'], UNIT_TYPES['m3'])
-        total += item['quantity'] * unit_info['to_m3']
+        total += item['space_m3']
     return total
 
 
@@ -111,7 +110,7 @@ def view_warehouse(warehouse_id):
         warehouse=warehouse,
         used_space=used_space,
         available_space=available_space,
-        unit_types=UNIT_TYPES
+        secondary_units=SECONDARY_UNITS
     )
 
 
@@ -159,34 +158,37 @@ def add_item(warehouse_id):
         return redirect(url_for('index'))
 
     item_name = request.form.get('item_name', '').strip()
-    unit = request.form.get('unit', 'm3')
+    secondary_unit = request.form.get('secondary_unit', 'liters')
 
     if not item_name:
         flash('Item name is required', 'error')
         return redirect(url_for('view_warehouse', warehouse_id=warehouse_id))
 
+    # Parse space in cubic meters (required)
     try:
-        quantity = float(request.form.get('quantity', 0))
+        space_m3 = float(request.form.get('space_m3', 0))
     except ValueError:
-        flash('Quantity must be a valid number', 'error')
+        flash('Space (m³) must be a valid number', 'error')
         return redirect(url_for('view_warehouse', warehouse_id=warehouse_id))
 
-    if quantity <= 0:
-        flash('Quantity must be a positive number', 'error')
+    if space_m3 <= 0:
+        flash('Space (m³) must be a positive number', 'error')
         return redirect(url_for('view_warehouse', warehouse_id=warehouse_id))
 
-    if unit not in UNIT_TYPES:
-        flash('Invalid unit type', 'error')
-        return redirect(url_for('view_warehouse', warehouse_id=warehouse_id))
+    # Parse secondary quantity (optional informational value)
+    try:
+        secondary_qty = float(request.form.get('secondary_qty', 0))
+    except ValueError:
+        secondary_qty = 0
 
-    # Calculate space needed in m³
-    unit_info = UNIT_TYPES[unit]
-    space_needed = quantity * unit_info['to_m3']
+    if secondary_unit not in SECONDARY_UNITS:
+        secondary_unit = 'liters'
+
     available_space = calculate_available_space(warehouse)
 
-    if space_needed > available_space:
+    if space_m3 > available_space:
         flash(
-            f'Not enough space. Need {space_needed:.4f} m³, '
+            f'Not enough space. Need {space_m3:.4f} m³, '
             f'available {available_space:.4f} m³',
             'error'
         )
@@ -196,18 +198,27 @@ def add_item(warehouse_id):
     warehouse['stored_items'][item_id] = {
         'id': item_id,
         'name': item_name,
-        'quantity': quantity,
-        'unit': unit
+        'space_m3': space_m3,
+        'secondary_qty': secondary_qty,
+        'secondary_unit': secondary_unit
     }
 
-    flash(f'Added {quantity:.2f} {unit_info["name"]} of "{item_name}"', 'success')
+    unit_name = SECONDARY_UNITS[secondary_unit]['name']
+    if secondary_qty > 0:
+        flash(
+            f'Added "{item_name}" ({space_m3:.4f} m³, '
+            f'{secondary_qty:.2f} {unit_name})',
+            'success'
+        )
+    else:
+        flash(f'Added "{item_name}" ({space_m3:.4f} m³)', 'success')
     return redirect(url_for('view_warehouse', warehouse_id=warehouse_id))
 
 
 @app.route('/warehouse/<int:warehouse_id>/item/<int:item_id>/update',
            methods=['POST'])
 def update_item(warehouse_id, item_id):
-    """Update item quantity in a warehouse."""
+    """Update item space and secondary quantity in a warehouse."""
     warehouse = warehouses.get(warehouse_id)
     if not warehouse:
         flash('Warehouse not found', 'error')
@@ -219,20 +230,23 @@ def update_item(warehouse_id, item_id):
         return redirect(url_for('view_warehouse', warehouse_id=warehouse_id))
 
     try:
-        new_quantity = float(request.form.get('quantity', 0))
+        new_space_m3 = float(request.form.get('space_m3', 0))
     except ValueError:
-        flash('Quantity must be a valid number', 'error')
+        flash('Space (m³) must be a valid number', 'error')
         return redirect(url_for('view_warehouse', warehouse_id=warehouse_id))
 
-    if new_quantity < 0:
-        flash('Quantity cannot be negative', 'error')
+    if new_space_m3 < 0:
+        flash('Space (m³) cannot be negative', 'error')
         return redirect(url_for('view_warehouse', warehouse_id=warehouse_id))
+
+    try:
+        new_secondary_qty = float(request.form.get('secondary_qty', 0))
+    except ValueError:
+        new_secondary_qty = item.get('secondary_qty', 0) if 'secondary_qty' in item else 0
 
     # Calculate space difference
-    unit_info = UNIT_TYPES[item['unit']]
-    old_space = item['quantity'] * unit_info['to_m3']
-    new_space = new_quantity * unit_info['to_m3']
-    space_diff = new_space - old_space
+    old_space = item['space_m3']
+    space_diff = new_space_m3 - old_space
 
     if space_diff > 0:
         available = calculate_available_space(warehouse)
@@ -244,8 +258,9 @@ def update_item(warehouse_id, item_id):
             )
             return redirect(url_for('view_warehouse', warehouse_id=warehouse_id))
 
-    item['quantity'] = new_quantity
-    flash(f'Updated "{item["name"]}" to {new_quantity:.2f}', 'success')
+    item['space_m3'] = new_space_m3
+    item['secondary_qty'] = new_secondary_qty
+    flash(f'Updated "{item["name"]}"', 'success')
     return redirect(url_for('view_warehouse', warehouse_id=warehouse_id))
 
 

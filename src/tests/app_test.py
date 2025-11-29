@@ -106,17 +106,19 @@ class TestApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'deleted successfully', response.data)
 
-    def test_add_item(self):
-        """Test adding an item to a warehouse."""
+    def test_add_item_with_space_and_secondary(self):
+        """Test adding an item with space (m³) and secondary quantity."""
         # First create a warehouse
         self.client.post('/warehouse/new', data={
             'name': 'Add Test',
             'capacity': '100'
         })
+        # Add item with space in m³ and secondary quantity in liters
         response = self.client.post('/warehouse/1/add', data={
             'item_name': 'Beer',
-            'quantity': '50',
-            'unit': 'liters'
+            'space_m3': '0.5',
+            'secondary_qty': '500',
+            'secondary_unit': 'liters'
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Added', response.data)
@@ -129,11 +131,12 @@ class TestApp(unittest.TestCase):
             'name': 'Overflow Test',
             'capacity': '1'  # 1 m³
         })
-        # Try to add 2000 liters (2 m³)
+        # Try to add item with 2 m³ space
         response = self.client.post('/warehouse/1/add', data={
             'item_name': 'Water',
-            'quantity': '2000',
-            'unit': 'liters'
+            'space_m3': '2',
+            'secondary_qty': '2000',
+            'secondary_unit': 'liters'
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Not enough space', response.data)
@@ -145,24 +148,26 @@ class TestApp(unittest.TestCase):
             'name': 'Multi Item Test',
             'capacity': '100'
         })
-        # Add beer
+        # Add beer (0.5 m³ space, 500 bottles)
         self.client.post('/warehouse/1/add', data={
             'item_name': 'Beer',
-            'quantity': '100',
-            'unit': 'units'
+            'space_m3': '0.5',
+            'secondary_qty': '500',
+            'secondary_unit': 'units'
         })
-        # Add wine
+        # Add wine (1 m³ space, 1000 liters)
         response = self.client.post('/warehouse/1/add', data={
             'item_name': 'Wine',
-            'quantity': '50',
-            'unit': 'liters'
+            'space_m3': '1',
+            'secondary_qty': '1000',
+            'secondary_unit': 'liters'
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Beer', response.data)
         self.assertIn(b'Wine', response.data)
 
-    def test_update_item_quantity(self):
-        """Test updating item quantity."""
+    def test_update_item(self):
+        """Test updating item space and secondary quantity."""
         # Create warehouse and add item
         self.client.post('/warehouse/new', data={
             'name': 'Update Test',
@@ -170,12 +175,14 @@ class TestApp(unittest.TestCase):
         })
         self.client.post('/warehouse/1/add', data={
             'item_name': 'Beer',
-            'quantity': '50',
-            'unit': 'liters'
+            'space_m3': '0.5',
+            'secondary_qty': '500',
+            'secondary_unit': 'liters'
         })
-        # Update quantity
+        # Update space and secondary quantity
         response = self.client.post('/warehouse/1/item/1/update', data={
-            'quantity': '75'
+            'space_m3': '0.75',
+            'secondary_qty': '750'
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Updated', response.data)
@@ -189,8 +196,9 @@ class TestApp(unittest.TestCase):
         })
         self.client.post('/warehouse/1/add', data={
             'item_name': 'Beer',
-            'quantity': '50',
-            'unit': 'liters'
+            'space_m3': '0.5',
+            'secondary_qty': '500',
+            'secondary_unit': 'liters'
         })
         response = self.client.post(
             '/warehouse/1/item/1/delete',
@@ -199,35 +207,70 @@ class TestApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Removed', response.data)
 
-    def test_different_units(self):
-        """Test items with different units."""
+    def test_different_secondary_units(self):
+        """Test items with different secondary units (all using m³ for space)."""
         # Create warehouse
         self.client.post('/warehouse/new', data={
             'name': 'Units Test',
             'capacity': '10'  # 10 m³
         })
-        # Add in cubic meters
+        # Add bulk grain (2 m³ space, 1500 kg)
         self.client.post('/warehouse/1/add', data={
             'item_name': 'Bulk Grain',
-            'quantity': '2',
-            'unit': 'm3'
+            'space_m3': '2',
+            'secondary_qty': '1500',
+            'secondary_unit': 'kg'
         })
-        # Add in liters
+        # Add water (1 m³ space, 1000 liters)
         self.client.post('/warehouse/1/add', data={
             'item_name': 'Water',
-            'quantity': '1000',
-            'unit': 'liters'
+            'space_m3': '1',
+            'secondary_qty': '1000',
+            'secondary_unit': 'liters'
         })
-        # Add in units
+        # Add bottles (0.5 m³ space, 500 units)
         response = self.client.post('/warehouse/1/add', data={
             'item_name': 'Bottles',
-            'quantity': '500',
-            'unit': 'units'
+            'space_m3': '0.5',
+            'secondary_qty': '500',
+            'secondary_unit': 'units'
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Bulk Grain', response.data)
         self.assertIn(b'Water', response.data)
         self.assertIn(b'Bottles', response.data)
+
+    def test_space_only_affects_storage(self):
+        """Test that only space_m3 affects storage calculation."""
+        # Create warehouse with 5 m³ capacity
+        self.client.post('/warehouse/new', data={
+            'name': 'Space Test',
+            'capacity': '5'
+        })
+        # Add item with 3 m³ space (should work)
+        self.client.post('/warehouse/1/add', data={
+            'item_name': 'Item1',
+            'space_m3': '3',
+            'secondary_qty': '10000',  # Large secondary value shouldn't matter
+            'secondary_unit': 'liters'
+        })
+        # Add item with 2 m³ space (should work, total 5 m³)
+        response = self.client.post('/warehouse/1/add', data={
+            'item_name': 'Item2',
+            'space_m3': '2',
+            'secondary_qty': '5000',
+            'secondary_unit': 'liters'
+        }, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Added', response.data)
+        # Try to add more (should fail, warehouse full)
+        response = self.client.post('/warehouse/1/add', data={
+            'item_name': 'Item3',
+            'space_m3': '0.1',
+            'secondary_qty': '100',
+            'secondary_unit': 'liters'
+        }, follow_redirects=True)
+        self.assertIn(b'Not enough space', response.data)
 
 
 if __name__ == '__main__':
