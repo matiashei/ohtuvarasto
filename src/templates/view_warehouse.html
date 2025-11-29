@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}{{ warehouse.name }} - Warehouse Manager{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1 class="card-title" style="margin-bottom: 0;">{{ warehouse.name }}</h1>
+        <div class="actions" style="margin-top: 0;">
+            <a href="{{ url_for('edit_warehouse', warehouse_id=warehouse.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+            <form method="POST" action="{{ url_for('delete_warehouse', warehouse_id=warehouse.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this warehouse?');">
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="warehouse-stats" style="margin-bottom: 30px;">
+        <div class="stat">
+            <span class="stat-label">Total Capacity</span>
+            <span class="stat-value">{{ "%.2f"|format(warehouse.varasto.tilavuus) }}</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Current Balance</span>
+            <span class="stat-value">{{ "%.2f"|format(warehouse.varasto.saldo) }}</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Available Space</span>
+            <span class="stat-value">{{ "%.2f"|format(warehouse.varasto.paljonko_mahtuu()) }}</span>
+        </div>
+    </div>
+
+    {% set fill_percent = (warehouse.varasto.saldo / warehouse.varasto.tilavuus * 100) if warehouse.varasto.tilavuus > 0 else 0 %}
+    <div style="margin-bottom: 30px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span class="stat-label">Fill Level</span>
+            <span class="stat-value">{{ "%.1f"|format(fill_percent) }}%</span>
+        </div>
+        <div class="progress-bar" style="height: 20px;">
+            <div class="progress-fill" style="width: {{ fill_percent }}%;"></div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="card" style="background: var(--bg-secondary);">
+            <h3 style="color: var(--success); margin-bottom: 15px;">➕ Add Content</h3>
+            <form method="POST" action="{{ url_for('add_content', warehouse_id=warehouse.id) }}">
+                <div class="inline-form" style="flex-direction: column; align-items: stretch;">
+                    <input type="number" name="amount" placeholder="Amount to add" step="0.01" min="0.01" required style="width: 100%;">
+                    <button type="submit" class="btn btn-primary" style="background: var(--success);">Add</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card" style="background: var(--bg-secondary);">
+            <h3 style="color: var(--warning); margin-bottom: 15px;">➖ Remove Content</h3>
+            <form method="POST" action="{{ url_for('remove_content', warehouse_id=warehouse.id) }}">
+                <div class="inline-form" style="flex-direction: column; align-items: stretch;">
+                    <input type="number" name="amount" placeholder="Amount to remove" step="0.01" min="0.01" required style="width: 100%;">
+                    <button type="submit" class="btn btn-primary" style="background: var(--warning);">Remove</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">← Back to Warehouses</a>
+    </div>
+</div>
+{% endblock %}

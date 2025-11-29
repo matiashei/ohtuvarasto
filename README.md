@@ -4,3 +4,42 @@
 
 
 Helsingin yliopiston ohjelmistotuotannon kurssin harjoitusrepositorio
+
+## Web User Interface
+
+This application includes a web-based user interface for warehouse management, built with [Flask](https://flask.palletsprojects.com/).
+
+### Features
+
+- **Create Warehouses**: Create multiple warehouses with custom names and capacities
+- **View Warehouses**: See all warehouses with their current balance and available space
+- **Edit Warehouses**: Update warehouse names
+- **Delete Warehouses**: Remove warehouses that are no longer needed
+- **Add Content**: Add items/quantities to warehouses
+- **Remove Content**: Take items/quantities from warehouses
+- **Dark Mode UI**: Modern, sleek dark-themed interface
+
+### Running the Web Application
+
+1. Install dependencies:
+   ```bash
+   poetry install
+   ```
+
+2. Run the application:
+   ```bash
+   poetry run python src/app.py
+   ```
+
+3. Open your browser and navigate to `http://localhost:5000`
+
+### Environment Variables
+
+- `FLASK_SECRET_KEY`: Secret key for session management (optional, auto-generated if not set)
+- `FLASK_DEBUG`: Set to `true` to enable debug mode (default: `false`)
+
+### Technologies Used
+
+- **Flask** (>=3.1.2): Web framework for Python
+- **Jinja2**: Template engine for rendering HTML
+- **Python 3.12+**: Programming language
