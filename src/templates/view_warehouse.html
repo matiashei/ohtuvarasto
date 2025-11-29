@@ -3,7 +3,7 @@
 {% block title %}{{ warehouse.name }} - Warehouse Manager{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width: 800px; margin: 0 auto;">
+<div class="card" style="max-width: 900px; margin: 0 auto;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h1 class="card-title" style="margin-bottom: 0;">{{ warehouse.name }}</h1>
         <div class="actions" style="margin-top: 0;">
@@ -17,19 +17,19 @@
     <div class="warehouse-stats" style="margin-bottom: 30px;">
         <div class="stat">
             <span class="stat-label">Total Capacity</span>
-            <span class="stat-value">{{ "%.2f"|format(warehouse.varasto.tilavuus) }}</span>
+            <span class="stat-value">{{ "%.2f"|format(warehouse.capacity_m3) }} m³</span>
         </div>
         <div class="stat">
-            <span class="stat-label">Current Balance</span>
-            <span class="stat-value">{{ "%.2f"|format(warehouse.varasto.saldo) }}</span>
+            <span class="stat-label">Used Space</span>
+            <span class="stat-value">{{ "%.4f"|format(used_space) }} m³</span>
         </div>
         <div class="stat">
             <span class="stat-label">Available Space</span>
-            <span class="stat-value">{{ "%.2f"|format(warehouse.varasto.paljonko_mahtuu()) }}</span>
+            <span class="stat-value">{{ "%.4f"|format(available_space) }} m³</span>
         </div>
     </div>
 
-    {% set fill_percent = (warehouse.varasto.saldo / warehouse.varasto.tilavuus * 100) if warehouse.varasto.tilavuus > 0 else 0 %}
+    {% set fill_percent = (used_space / warehouse.capacity_m3 * 100) if warehouse.capacity_m3 > 0 else 0 %}
     <div style="margin-bottom: 30px;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
             <span class="stat-label">Fill Level</span>
@@ -40,26 +40,77 @@
         </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        <div class="card" style="background: var(--bg-secondary);">
-            <h3 style="color: var(--success); margin-bottom: 15px;">➕ Add Content</h3>
-            <form method="POST" action="{{ url_for('add_content', warehouse_id=warehouse.id) }}">
-                <div class="inline-form" style="flex-direction: column; align-items: stretch;">
-                    <input type="number" name="amount" placeholder="Amount to add" step="0.01" min="0.01" required style="width: 100%;">
-                    <button type="submit" class="btn btn-primary" style="background: var(--success);">Add</button>
+    <!-- Add New Item Form -->
+    <div class="card" style="background: var(--bg-secondary); margin-bottom: 30px;">
+        <h3 style="color: var(--success); margin-bottom: 15px;">➕ Add New Item</h3>
+        <form method="POST" action="{{ url_for('add_item', warehouse_id=warehouse.id) }}">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 15px; align-items: end;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="item_name">Item Name</label>
+                    <input type="text" id="item_name" name="item_name" placeholder="e.g., Beer, Wine, Water" required>
                 </div>
-            </form>
-        </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="quantity">Quantity</label>
+                    <input type="number" id="quantity" name="quantity" placeholder="Amount" step="0.01" min="0.01" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="unit">Unit</label>
+                    <select id="unit" name="unit" style="width: 100%; padding: 12px 16px; border: 2px solid var(--border); border-radius: 8px; background: var(--bg-primary); color: var(--text-primary); font-size: 1rem;">
+                        {% for unit_key, unit_info in unit_types.items() %}
+                        <option value="{{ unit_key }}">{{ unit_info.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="background: var(--success); height: fit-content;">Add Item</button>
+            </div>
+        </form>
+    </div>
 
-        <div class="card" style="background: var(--bg-secondary);">
-            <h3 style="color: var(--warning); margin-bottom: 15px;">➖ Remove Content</h3>
-            <form method="POST" action="{{ url_for('remove_content', warehouse_id=warehouse.id) }}">
-                <div class="inline-form" style="flex-direction: column; align-items: stretch;">
-                    <input type="number" name="amount" placeholder="Amount to remove" step="0.01" min="0.01" required style="width: 100%;">
-                    <button type="submit" class="btn btn-primary" style="background: var(--warning);">Remove</button>
-                </div>
-            </form>
+    <!-- Items List -->
+    <div class="card" style="background: var(--bg-secondary);">
+        <h3 style="color: var(--accent); margin-bottom: 15px;">📦 Items in Warehouse</h3>
+        
+        {% if warehouse.stored_items %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border);">
+                        <th style="text-align: left; padding: 12px; color: var(--text-secondary);">Item Name</th>
+                        <th style="text-align: right; padding: 12px; color: var(--text-secondary);">Quantity</th>
+                        <th style="text-align: left; padding: 12px; color: var(--text-secondary);">Unit</th>
+                        <th style="text-align: right; padding: 12px; color: var(--text-secondary);">Space (m³)</th>
+                        <th style="text-align: center; padding: 12px; color: var(--text-secondary);">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item_id, item in warehouse.stored_items.items() %}
+                    {% set unit_info = unit_types[item.unit] %}
+                    {% set item_space = item.quantity * unit_info.to_m3 %}
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 12px; font-weight: 500;">{{ item.name }}</td>
+                        <td style="padding: 12px; text-align: right;">
+                            <form method="POST" action="{{ url_for('update_item', warehouse_id=warehouse.id, item_id=item_id) }}" style="display: flex; justify-content: flex-end; gap: 8px;">
+                                <input type="number" name="quantity" value="{{ item.quantity }}" step="0.01" min="0" style="width: 100px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); text-align: right;">
+                                <button type="submit" class="btn btn-secondary btn-sm" style="padding: 6px 12px;">Update</button>
+                            </form>
+                        </td>
+                        <td style="padding: 12px;">{{ unit_info.name }}</td>
+                        <td style="padding: 12px; text-align: right;">{{ "%.4f"|format(item_space) }}</td>
+                        <td style="padding: 12px; text-align: center;">
+                            <form method="POST" action="{{ url_for('delete_item', warehouse_id=warehouse.id, item_id=item_id) }}" style="display: inline;" onsubmit="return confirm('Remove this item?');">
+                                <button type="submit" class="btn btn-danger btn-sm" style="padding: 6px 12px;">Remove</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+        {% else %}
+        <div class="empty-state" style="padding: 30px;">
+            <p style="color: var(--text-secondary);">No items in this warehouse yet. Add your first item above!</p>
+        </div>
+        {% endif %}
     </div>
 
     <div style="margin-top: 20px;">

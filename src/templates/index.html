@@ -12,23 +12,28 @@
     {% if warehouses %}
         <div class="warehouse-grid">
             {% for id, warehouse in warehouses.items() %}
+                {% set info = warehouse_info[id] %}
                 <div class="warehouse-card">
                     <h3 class="warehouse-name">{{ warehouse.name }}</h3>
                     <div class="warehouse-stats">
                         <div class="stat">
                             <span class="stat-label">Capacity</span>
-                            <span class="stat-value">{{ "%.2f"|format(warehouse.varasto.tilavuus) }}</span>
+                            <span class="stat-value">{{ "%.2f"|format(warehouse.capacity_m3) }} m³</span>
                         </div>
                         <div class="stat">
-                            <span class="stat-label">Current Balance</span>
-                            <span class="stat-value">{{ "%.2f"|format(warehouse.varasto.saldo) }}</span>
+                            <span class="stat-label">Used Space</span>
+                            <span class="stat-value">{{ "%.2f"|format(info.used_space) }} m³</span>
                         </div>
                         <div class="stat">
                             <span class="stat-label">Available Space</span>
-                            <span class="stat-value">{{ "%.2f"|format(warehouse.varasto.paljonko_mahtuu()) }}</span>
+                            <span class="stat-value">{{ "%.2f"|format(info.available_space) }} m³</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Items</span>
+                            <span class="stat-value">{{ warehouse.stored_items|length }}</span>
                         </div>
                     </div>
-                    {% set fill_percent = (warehouse.varasto.saldo / warehouse.varasto.tilavuus * 100) if warehouse.varasto.tilavuus > 0 else 0 %}
+                    {% set fill_percent = (info.used_space / warehouse.capacity_m3 * 100) if warehouse.capacity_m3 > 0 else 0 %}
                     <div class="progress-bar">
                         <div class="progress-fill" style="width: {{ fill_percent }}%;"></div>
                     </div>

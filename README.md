@@ -11,12 +11,16 @@ This application includes a web-based user interface for warehouse management, b
 
 ### Features
 
-- **Create Warehouses**: Create multiple warehouses with custom names and capacities
-- **View Warehouses**: See all warehouses with their current balance and available space
+- **Create Warehouses**: Create multiple warehouses with custom names and capacities measured in cubic meters (m³)
+- **Multiple Items**: Each warehouse can store different items (e.g., beer, wine, water)
+- **Flexible Units**: Track items in different units:
+  - Cubic Meters (m³) - for bulk storage
+  - Liters (L) - for liquids
+  - Units/Bottles - for individual items
+- **View Warehouses**: See all warehouses with their used/available space
 - **Edit Warehouses**: Update warehouse names
 - **Delete Warehouses**: Remove warehouses that are no longer needed
-- **Add Content**: Add items/quantities to warehouses
-- **Remove Content**: Take items/quantities from warehouses
+- **Add/Update/Remove Items**: Manage individual items within each warehouse
 - **Dark Mode UI**: Modern, sleek dark-themed interface
 
 ### Running the Web Application

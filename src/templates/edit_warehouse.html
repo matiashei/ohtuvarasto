@@ -14,14 +14,14 @@
         
         <div class="form-group">
             <label>Capacity (read-only)</label>
-            <input type="number" value="{{ warehouse.varasto.tilavuus }}" disabled style="opacity: 0.6;">
-            <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Capacity cannot be changed after creation</small>
+            <input type="number" value="{{ warehouse.capacity_m3 }}" disabled style="opacity: 0.6;">
+            <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Capacity in m³ cannot be changed after creation</small>
         </div>
         
         <div class="form-group">
-            <label>Current Balance (read-only)</label>
-            <input type="number" value="{{ warehouse.varasto.saldo }}" disabled style="opacity: 0.6;">
-            <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Use Add/Remove actions to modify balance</small>
+            <label>Items Stored</label>
+            <input type="number" value="{{ warehouse.stored_items|length }}" disabled style="opacity: 0.6;">
+            <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Manage items from the warehouse view</small>
         </div>
         
         <div class="actions">
